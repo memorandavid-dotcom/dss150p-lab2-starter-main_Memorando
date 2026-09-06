@@ -1,12 +1,33 @@
-source_name: "TODO"
-source_type: "TODO"
-location_or_endpoint: "TODO"
-owner: "TODO"
-description: "TODO"
-record_count: "TODO"
-schema: []
-primary_or_candidate_key: "TODO"
-update_pattern: "TODO"
-known_quality_issues: []
-acquisition_method: "TODO"
-validation_checks: []
+source_name: "customers_csv"
+source_type: "csv"
+location_or_endpoint: "data/customers.csv"
+owner: "Data Engineering Team"
+description: "Raw customer demographic and signup data file."
+record_count: 250
+schema:
+  - name: customer_id
+    type: string
+  - name: first_name
+    type: string
+  - name: last_name
+    type: string
+  - name: email
+    type: string
+  - name: city
+    type: string
+  - name: signup_date
+    type: string
+  - name: customer_segment
+    type: string
+primary_or_candidate_key: "customer_id"
+update_pattern: "full_snapshot"
+known_quality_issues:
+  - "3 missing values found in the email column"
+  - "2 missing values found in the city column"
+  - "2 exact duplicate rows present in the dataset"
+  - "customer_id is not strictly unique due to duplicates"
+acquisition_method: "batch_file_drop"
+validation_checks:
+  - "Verify row count matches 250"
+  - "Track missing values for email and city"
+  - "Detect duplicate rows"

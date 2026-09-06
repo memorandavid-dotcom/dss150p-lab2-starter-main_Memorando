@@ -1,18 +1,36 @@
-dataset: customers
-owner: "TODO"
+owner: "Data Engineering Team"
 source_type: csv
 primary_key: customer_id
 delivery:
-  cadence: "TODO"
+  cadence: "daily"
 fields:
   - name: customer_id
     type: string
     nullable: false
     unique: true
+  - name: first_name
+    type: string
+    nullable: false
+  - name: last_name
+    type: string
+    nullable: false
   - name: email
     type: string
-    nullable: true
+    nullable: true   # Note: Profiling showed 3 missing values
+  - name: city
+    type: string
+    nullable: true   # Note: Profiling showed 2 missing values
+  - name: signup_date
+    type: string
+    nullable: false
+  - name: customer_segment
+    type: string
+    nullable: false
 quality_rules:
-  - "TODO: define at least 5 rules"
+  - "Row count must equal 250"
+  - "customer_id must not contain nulls"
+  - "email cannot be null for premium segments"
+  - "signup_date must follow ISO format"
+  - "No exact duplicate rows allowed in clean dataset"
 change_policy:
-  schema_change_notice: "TODO"
+  schema_change_notice: "7 days advance notice required for breaking changes"
