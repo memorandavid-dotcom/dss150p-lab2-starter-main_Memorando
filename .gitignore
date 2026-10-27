@@ -1,0 +1,36 @@
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# DSS150P Lab 2 Generated Runtime Artifacts (Per README guidance - DO NOT COMMIT)
+dss150p-lab2-starter-main/raw/
+dss150p-lab2-starter-main/state/
+raw/
+state/
+
+# Runtime Logs
+*.log
+pipeline_run_log.csv
+dss150p-lab2-starter-main/pipeline_run_log.csv
+
+# Environment and secrets
+.env
+*.env
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

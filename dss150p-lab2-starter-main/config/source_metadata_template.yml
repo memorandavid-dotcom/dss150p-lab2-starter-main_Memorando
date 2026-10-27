@@ -1,33 +1,91 @@
-source_name: "customers_csv"
-source_type: "csv"
-location_or_endpoint: "data/customers.csv"
-owner: "Data Engineering Team"
-description: "Raw customer demographic and signup data file."
-record_count: 250
-schema:
-  - name: customer_id
-    type: string
-  - name: first_name
-    type: string
-  - name: last_name
-    type: string
-  - name: email
-    type: string
-  - name: city
-    type: string
-  - name: signup_date
-    type: string
-  - name: customer_segment
-    type: string
-primary_or_candidate_key: "customer_id"
-update_pattern: "full_snapshot"
-known_quality_issues:
-  - "3 missing values found in the email column"
-  - "2 missing values found in the city column"
-  - "2 exact duplicate rows present in the dataset"
-  - "customer_id is not strictly unique due to duplicates"
-acquisition_method: "batch_file_drop"
-validation_checks:
-  - "Verify row count matches 250"
-  - "Track missing values for email and city"
-  - "Detect duplicate rows"
+# DSS150P Source Metadata Inventory & Catalog
+# Contains formalized profiling specifications for all lab ingestion sources.
+
+catalog_version: "1.0.0"
+last_updated: "2026-10-27"
+maintainer: "David Memorando - Data Engineering Team"
+
+sources:
+  - source_name: "customers_csv"
+    source_type: "csv"
+    location_or_endpoint: "data/customers.csv"
+    owner: "Customer Master Data Team"
+    description: "Raw customer demographic and signup data file."
+    record_count: 250
+    primary_or_candidate_key: "customer_id"
+    update_pattern: "full_snapshot"
+    known_quality_issues:
+      - "3 missing values found in the email column"
+      - "2 missing values found in the city column"
+      - "2 exact duplicate rows present in the dataset"
+      - "customer_id is not strictly unique before deduplication"
+    acquisition_method: "batch_file_drop"
+    validation_checks:
+      - "Verify row count matches 250"
+      - "Track missing values for email and city"
+      - "Detect duplicate rows"
+
+  - source_name: "orders_json"
+    source_type: "json"
+    location_or_endpoint: "data/orders.json"
+    owner: "E-Commerce Transaction Team"
+    description: "Raw order transaction records stored in JSON format."
+    record_count: 500
+    primary_or_candidate_key: "order_id"
+    update_pattern: "append_incremental"
+    known_quality_issues:
+      - "Zero missing keys across all 500 records"
+      - "No duplicate order_ids detected"
+    acquisition_method: "batch_file_drop"
+    validation_checks:
+      - "Verify record count equals 500"
+      - "Assert order_id uniqueness"
+
+  - source_name: "products_parquet"
+    source_type: "parquet"
+    location_or_endpoint: "data/products.parquet"
+    owner: "Product Catalog Team"
+    description: "Product catalog inventory records in columnar Parquet format."
+    record_count: 120
+    primary_or_candidate_key: "product_id"
+    update_pattern: "full_snapshot"
+    known_quality_issues:
+      - "Zero missing values across all columns"
+      - "Parquet achieves high compression vs JSON (14.6KB vs 40.7KB)"
+    acquisition_method: "batch_file_drop"
+    validation_checks:
+      - "Assert row count equals 120"
+      - "Assert product_id is unique"
+
+  - source_name: "events_api"
+    source_type: "rest_api"
+    location_or_endpoint: "http://127.0.0.1:8000/api/events"
+    owner: "Platform Real-Time Services Team"
+    description: "User interaction event stream exposed via paginated REST API."
+    record_count: 100
+    primary_or_candidate_key: "event_id"
+    update_pattern: "incremental_watermark"
+    known_quality_issues:
+      - "Multiple state updates for same event_id"
+      - "Requires tie-breaker: keep greatest updated_at"
+    acquisition_method: "paginated_rest_get"
+    validation_checks:
+      - "Traverse all pages until has_more is False"
+      - "Deduplicate on event_id keeping greatest updated_at"
+      - "Advance watermark in state/api_watermark.json only after write"
+
+  - source_name: "postgres_support_tickets"
+    source_type: "relational_db"
+    location_or_endpoint: "postgresql://dss150p:dss150p@localhost:5432/dss150p"
+    owner: "Customer Support Team"
+    description: "Support ticket records from transactional PostgreSQL database."
+    record_count: 250
+    primary_or_candidate_key: "ticket_id"
+    update_pattern: "incremental_watermark_or_cdc"
+    known_quality_issues:
+      - "4 unassigned tickets (assigned_agent IS NULL)"
+      - "125 unresolved tickets (resolved_at IS NULL)"
+    acquisition_method: "cdc_or_read_replica_extract"
+    validation_checks:
+      - "Assert ticket_id uniqueness"
+      - "Verify referential integrity to customer_id"

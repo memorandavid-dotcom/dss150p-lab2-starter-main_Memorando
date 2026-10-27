@@ -1,0 +1,37 @@
+source_name: "orders_json"
+source_type: "json"
+location_or_endpoint: "data/orders.json"
+owner: "E-Commerce Transaction Team"
+description: "Raw order transaction records stored in JSON format."
+record_count: 500
+file_size_bytes: 77938
+schema:
+  - name: order_id
+    type: string
+    description: "Unique alphanumeric transaction ID"
+  - name: customer_id
+    type: string
+    description: "Foreign key linking to customer record"
+  - name: order_date
+    type: string
+    description: "ISO-8601 order timestamp"
+  - name: total_amount
+    type: float
+    description: "Total order value in USD"
+  - name: status
+    type: string
+    description: "Order fulfillment status (Completed, Pending, Cancelled)"
+  - name: items_count
+    type: integer
+    description: "Count of items purchased"
+primary_or_candidate_key: "order_id"
+update_pattern: "append_incremental"
+known_quality_issues:
+  - "Zero missing keys across all 500 records"
+  - "No duplicate order_ids detected"
+acquisition_method: "batch_file_drop"
+validation_checks:
+  - "Verify record count equals 500"
+  - "Confirm root element is JSON array"
+  - "Assert order_id uniqueness"
+  - "Check SHA-256 fingerprint in manifest"

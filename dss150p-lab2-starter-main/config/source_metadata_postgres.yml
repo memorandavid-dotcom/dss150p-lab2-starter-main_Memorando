@@ -1,0 +1,42 @@
+source_name: "postgres_support_tickets"
+source_type: "relational_db"
+location_or_endpoint: "postgresql://dss150p:dss150p@localhost:5432/dss150p (table: support_tickets)"
+owner: "Customer Support & Operations Engineering"
+description: "Transactional customer support ticketing records from PostgreSQL OLTP database."
+record_count: 250
+schema:
+  - name: ticket_id
+    type: integer
+    description: "Primary key unique ticket identifier"
+  - name: customer_id
+    type: varchar(10)
+    description: "Foreign key reference to customers table"
+  - name: category
+    type: varchar(40)
+    description: "Ticket issue classification (Account, Product, Delivery, Billing, Technical)"
+  - name: priority
+    type: varchar(10)
+    description: "Urgency rating (Low, Medium, High)"
+  - name: assigned_agent
+    type: varchar(80)
+    description: "Support engineer assigned (nullable for triage tickets)"
+  - name: opened_at
+    type: timestamp
+    description: "Timestamp when ticket was created"
+  - name: resolved_at
+    type: timestamp
+    description: "Timestamp when ticket was resolved (null for active tickets)"
+  - name: status
+    type: varchar(20)
+    description: "Current lifecycle state (Open, In Progress, Resolved, Closed)"
+primary_or_candidate_key: "ticket_id"
+update_pattern: "incremental_watermark_or_cdc"
+known_quality_issues:
+  - "4 unassigned tickets (assigned_agent IS NULL)"
+  - "125 unresolved tickets (resolved_at IS NULL) representing active cases"
+  - "100% referential integrity with customers dataset"
+acquisition_method: "cdc_or_read_replica_extract"
+validation_checks:
+  - "Assert ticket_id is unique across all records"
+  - "Validate opened_at <= resolved_at when resolved_at is not null"
+  - "Confirm referential integrity of customer_id against customer dimension"

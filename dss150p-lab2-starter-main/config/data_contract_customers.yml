@@ -1,36 +1,106 @@
-owner: "Data Engineering Team"
-source_type: csv
-primary_key: customer_id
+version: "1.0.0"
+dataset: "customers"
+owner: "Data Engineering & Analytics Team"
+contact: "data-eng@enterprise.internal"
+source_type: "csv"
+location: "data/customers.csv"
+primary_key: "customer_id"
+
 delivery:
   cadence: "daily"
-fields:
-  - name: customer_id
-    type: string
+  expected_arrival_time: "06:00 UTC"
+  freshness_sla: "24 hours"
+  format: "RFC-4180 CSV with header"
+  compression: "none"
+
+schema:
+  - name: "customer_id"
+    type: "string"
+    logical_type: "identifier"
+    description: "Unique alphanumeric customer identifier (e.g., C0001)."
     nullable: false
     unique: true
-  - name: first_name
-    type: string
+    pattern: "^C[0-9]{4}$"
+
+  - name: "first_name"
+    type: "string"
+    logical_type: "text"
+    description: "Customer legal first name."
     nullable: false
-  - name: last_name
-    type: string
+    unique: false
+
+  - name: "last_name"
+    type: "string"
+    logical_type: "text"
+    description: "Customer legal last name."
     nullable: false
-  - name: email
-    type: string
-    nullable: true   # Note: Profiling showed 3 missing values
-  - name: city
-    type: string
-    nullable: true   # Note: Profiling showed 2 missing values
-  - name: signup_date
-    type: string
+    unique: false
+
+  - name: "email"
+    type: "string"
+    logical_type: "email"
+    description: "Customer primary contact email address."
+    nullable: true
+    unique: false
+    pattern: "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$"
+    max_null_percentage: 2.0  # Profiling observed 3 nulls (~1.2%)
+
+  - name: "city"
+    type: "string"
+    logical_type: "location"
+    description: "Customer residence city."
+    nullable: true
+    unique: false
+    max_null_percentage: 1.5  # Profiling observed 2 nulls (~0.8%)
+
+  - name: "signup_date"
+    type: "string"
+    logical_type: "date"
+    description: "Date the customer account was established."
     nullable: false
-  - name: customer_segment
-    type: string
+    unique: false
+    format: "ISO-8601 YYYY-MM-DD"
+    min_date: "2020-01-01"
+
+  - name: "customer_segment"
+    type: "string"
+    logical_type: "categorical"
+    description: "Commercial tier assignment."
     nullable: false
+    unique: false
+    allowed_values:
+      - "Standard"
+      - "Premium"
+      - "Enterprise"
+
 quality_rules:
-  - "Row count must equal 250"
-  - "customer_id must not contain nulls"
-  - "email cannot be null for premium segments"
-  - "signup_date must follow ISO format"
-  - "No exact duplicate rows allowed in clean dataset"
+  - name: "row_count_bounds"
+    rule: "COUNT(*) BETWEEN 240 AND 260"
+    severity: "CRITICAL"
+    action: "ALERT_AND_HOLD"
+
+  - name: "customer_id_not_null"
+    rule: "customer_id IS NOT NULL"
+    severity: "CRITICAL"
+    action: "FAIL_PIPELINE"
+
+  - name: "premium_email_required"
+    rule: "customer_segment = 'Enterprise' => email IS NOT NULL"
+    severity: "WARNING"
+    action: "LOG_ANOMALY"
+
+  - name: "signup_date_iso_check"
+    rule: "signup_date REGEX '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
+    severity: "CRITICAL"
+    action: "FAIL_PIPELINE"
+
+  - name: "duplicate_row_tolerance"
+    rule: "EXACT_DUPLICATE_ROWS <= 5"
+    severity: "WARNING"
+    action: "ALERT_AND_DEDUPLICATE_DOWNSTREAM"
+
 change_policy:
-  schema_change_notice: "7 days advance notice required for breaking changes"
+  notification_channel: "#data-ops-alerts"
+  schema_change_advance_notice_days: 14
+  breaking_change_policy: "Requires contract renegotiation, semantic version bump (major), and 30-day dual-run deprecation."
+  non_breaking_change_policy: "Nullable column additions allowed with minor version bump and 7-day notice."

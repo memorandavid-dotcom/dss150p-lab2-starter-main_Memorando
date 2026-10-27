@@ -1,0 +1,130 @@
+version: "1.0.0"
+dataset: "api_events"
+owner: "Platform Engineering & Event Stream Team"
+contact: "platform-events@enterprise.internal"
+source_type: "rest_api"
+endpoint: "http://127.0.0.1:8000/api/events"
+primary_key: "event_id"
+
+delivery:
+  protocol: "HTTP/1.1 REST JSON"
+  method: "GET"
+  cadence: "10 minutes"
+  pagination:
+    type: "page_based"
+    default_per_page: 20
+    max_per_page: 50
+    has_more_indicator: "has_more"
+    next_page_indicator: "next_page"
+  incremental_strategy:
+    type: "watermark"
+    query_param: "updated_after"
+    format: "ISO-8601 UTC timestamp (YYYY-MM-DDTHH:MM:SS)"
+    watermark_column: "updated_at"
+
+envelope_schema:
+  - name: "page"
+    type: "integer"
+    description: "Current page index (1-indexed)."
+    nullable: false
+  - name: "per_page"
+    type: "integer"
+    description: "Configured batch size per page."
+    nullable: false
+  - name: "total"
+    type: "integer"
+    description: "Total count of records matching criteria."
+    nullable: false
+  - name: "has_more"
+    type: "boolean"
+    description: "True if additional records exist on subsequent pages."
+    nullable: false
+  - name: "next_page"
+    type: "integer"
+    description: "Next page index if has_more is true; null otherwise."
+    nullable: true
+  - name: "items"
+    type: "array"
+    description: "List of event payload records."
+    nullable: false
+
+record_schema:
+  - name: "event_id"
+    type: "string"
+    logical_type: "identifier"
+    description: "Unique event identifier (e.g. EVT-1001)."
+    nullable: false
+    unique_in_snapshot: false  # Note: multiple versions can exist over time across pages
+    unique_after_dedup: true
+
+  - name: "customer_id"
+    type: "string"
+    logical_type: "foreign_key"
+    description: "Reference to the customer who initiated the event."
+    nullable: false
+    unique: false
+    pattern: "^C[0-9]{4}$"
+
+  - name: "event_type"
+    type: "string"
+    logical_type: "categorical"
+    description: "Classification of user activity."
+    nullable: false
+    allowed_values:
+      - "login"
+      - "page_view"
+      - "cart_update"
+      - "checkout_started"
+      - "payment_processed"
+
+  - name: "updated_at"
+    type: "string"
+    logical_type: "timestamp"
+    description: "Source mutation timestamp used for high-watermark tracking."
+    nullable: false
+    format: "ISO-8601 UTC (YYYY-MM-DDTHH:MM:SS)"
+
+  - name: "payload"
+    type: "object"
+    logical_type: "json_payload"
+    description: "Contextual attributes specific to the event type."
+    nullable: true
+
+ingestion_metadata_schema:
+  - name: "_ingested_at"
+    type: "string"
+    logical_type: "timestamp"
+    description: "UTC timestamp added at ingestion landing."
+    nullable: false
+
+  - name: "_source"
+    type: "string"
+    logical_type: "constant"
+    description: "Origin source system tag ('local_api')."
+    nullable: false
+
+quality_rules:
+  - name: "watermark_monotonicity"
+    rule: "watermark_after >= watermark_before"
+    severity: "CRITICAL"
+    action: "FAIL_PIPELINE"
+
+  - name: "deduplication_integrity"
+    rule: "COUNT(DISTINCT event_id) == COUNT(*) IN raw/api/events.jsonl"
+    severity: "CRITICAL"
+    action: "FAIL_VALIDATION"
+
+  - name: "atomic_persistence"
+    rule: "watermark advances ONLY after atomic write of events.jsonl succeeds"
+    severity: "CRITICAL"
+    action: "HALT_WATERMARK_ADVANCE"
+
+  - name: "valid_iso_timestamps"
+    rule: "updated_at and _ingested_at must parse as valid ISO-8601 datetimes"
+    severity: "CRITICAL"
+    action: "FAIL_PIPELINE"
+
+change_policy:
+  notification_channel: "#platform-events-alerts"
+  deprecation_notice_days: 30
+  breaking_changes: "Field removals, semantic changes to event_type, or changing timestamp format requires 30-day notice and version increment."

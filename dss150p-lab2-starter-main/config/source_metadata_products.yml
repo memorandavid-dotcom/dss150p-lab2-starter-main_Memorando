@@ -1,0 +1,38 @@
+source_name: "products_parquet"
+source_type: "parquet"
+location_or_endpoint: "data/products.parquet"
+owner: "Product Catalog & Inventory Engineering"
+description: "Product catalog inventory records in columnar Parquet format."
+record_count: 120
+file_size_bytes: 14652
+schema:
+  - name: product_id
+    type: int64
+    description: "Unique integer product identifier"
+  - name: product_name
+    type: string
+    description: "Display name of the product"
+  - name: category
+    type: string
+    description: "Product classification hierarchy"
+  - name: price
+    type: float64
+    description: "Retail listing price in USD"
+  - name: cost
+    type: float64
+    description: "Unit acquisition / manufacturing cost in USD"
+  - name: stock_level
+    type: int64
+    description: "Available inventory in warehouse"
+primary_or_candidate_key: "product_id"
+update_pattern: "full_snapshot"
+known_quality_issues:
+  - "Zero missing values across all columns"
+  - "product_id is strictly unique"
+  - "Parquet file achieves 64% compression reduction compared to JSON equivalent"
+acquisition_method: "batch_file_drop"
+validation_checks:
+  - "Assert row count equals 120"
+  - "Verify Parquet metadata and Arrow physical types"
+  - "Assert product_id is unique"
+  - "Verify SHA-256 integrity against raw/manifest.json"
